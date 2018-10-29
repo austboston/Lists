@@ -12,7 +12,7 @@ class TopViewController: UITableViewController {
     
     @IBOutlet var topTableView: UITableView!
     
-    let itemArray = ["Catch the Joker", "Schedule lunch with Robin", "Cancel with Catwoman for Friday"]
+    var itemArray = ["Catch the Joker", "Schedule lunch with Robin", "Cancel with Catwoman for Friday"]
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -46,6 +46,26 @@ class TopViewController: UITableViewController {
         } else {
             tableView.cellForRow(at: indexPath)?.accessoryType = .none
         }
+    }
+    @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
+        var textField = UITextField()
+        
+        let alert = UIAlertController(title: "Add New Item", message: "", preferredStyle: .alert)
+        
+        let action = UIAlertAction(title: "Add", style: .default) { (action) in
+            self.itemArray.append(textField.text!)
+            self.tableView.reloadData()
+            
+        }
+        
+        alert.addAction(action)
+        alert.addTextField { (alertTextField) in
+            alertTextField.placeholder = "Create new item"
+            print(alertTextField.text)
+            textField = alertTextField
+        }
+            
+        present(alert, animated: true, completion: nil)
     }
 }
 

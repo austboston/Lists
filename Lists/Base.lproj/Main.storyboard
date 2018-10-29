@@ -32,7 +32,14 @@
                             <outlet property="delegate" destination="kfe-nK-VVg" id="nGr-K5-usS"/>
                         </connections>
                     </tableView>
-                    <navigationItem key="navigationItem" title="Lists" id="JYx-JE-uar"/>
+                    <navigationItem key="navigationItem" title="Lists" id="JYx-JE-uar">
+                        <barButtonItem key="rightBarButtonItem" systemItem="add" id="y6w-WX-Ul4">
+                            <color key="tintColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                            <connections>
+                                <action selector="addButtonPressed:" destination="kfe-nK-VVg" id="hzc-De-L9g"/>
+                            </connections>
+                        </barButtonItem>
+                    </navigationItem>
                     <connections>
                         <outlet property="topTableView" destination="jEQ-uQ-Y8S" id="5h8-zZ-Ioh"/>
                     </connections>
