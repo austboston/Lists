@@ -12,11 +12,16 @@ class TopViewController: UITableViewController {
     
     @IBOutlet var topTableView: UITableView!
     
+    let defaults = UserDefaults.standard
+    
     var itemArray = ["Catch the Joker", "Schedule lunch with Robin", "Cancel with Catwoman for Friday"]
 
     override func viewDidLoad() {
         super.viewDidLoad()
         configureTableView()
+        if let items = defaults.array(forKey: "TodoListArray") as? [String] {
+            itemArray = items
+        }
         
     }
     
@@ -54,6 +59,7 @@ class TopViewController: UITableViewController {
         
         let action = UIAlertAction(title: "Add", style: .default) { (action) in
             self.itemArray.append(textField.text!)
+            self.defaults.set(self.itemArray, forKey: "TodoListArray")
             self.tableView.reloadData()
             
         }
