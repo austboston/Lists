@@ -14,22 +14,47 @@ class TopViewController: UITableViewController {
     
     let defaults = UserDefaults.standard
     
-    var itemArray = ["Catch the Joker", "Schedule lunch with Robin", "Cancel with Catwoman for Friday"]
+    var itemArray = [Item]()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        configureTableView()
-        if let items = defaults.array(forKey: "TodoListArray") as? [String] {
+        
+        let newItem = Item()
+        newItem.title = "Catch the Joker"
+        itemArray.append(newItem)
+        
+        let newItem2 = Item()
+        newItem2.title = "Hire Mike 2"
+        itemArray.append(newItem2)
+        
+        let newItem3 = Item()
+        newItem3.title = "Hire Mike 3"
+        itemArray.append(newItem3)
+        
+        let newItem4 = Item()
+        newItem4.title = "Hire Mike 4"
+        itemArray.append(newItem4)
+        
+        
+        if let items = defaults.array(forKey: "TopViewArray") as? [Item] {
             itemArray = items
         }
-        
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "TopViewItemCell", for: indexPath)
-        cell.textLabel?.text = itemArray[indexPath.row]
+        
+        let itemA = itemArray[indexPath.row]
+        
+        cell.textLabel?.text = itemA.title
+        
+        //TERNARY OPERATOR IS ==> value = condition ? valueIfTrue : valueIfFalse
+        cell.accessoryType = itemA.done ? .checkmark : .none
+        
         return cell
+
     }
+    
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return itemArray.count
@@ -40,34 +65,34 @@ class TopViewController: UITableViewController {
         topTableView.estimatedRowHeight = 120.0
     }
     
-    //fire this whenever we click on any cell in the table view
+
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        //print(itemArray[indexPath.row])
+        
+        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+        
+        tableView.reloadData()
         
         tableView.deselectRow(at: indexPath, animated: true)
-        
-        if tableView.cellForRow(at: indexPath)?.accessoryType != .checkmark {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-        } else {
-            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-        }
     }
+    
+
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         var textField = UITextField()
         
         let alert = UIAlertController(title: "Add New Item", message: "", preferredStyle: .alert)
         
         let action = UIAlertAction(title: "Add", style: .default) { (action) in
-            self.itemArray.append(textField.text!)
-            self.defaults.set(self.itemArray, forKey: "TodoListArray")
+            let newItem = Item()
+            newItem.title = textField.text!
+            self.itemArray.append(newItem)
+            self.defaults.set(self.itemArray, forKey: "TopViewArray")
             self.tableView.reloadData()
-            
         }
+        
         
         alert.addAction(action)
         alert.addTextField { (alertTextField) in
             alertTextField.placeholder = "Create new item"
-            print(alertTextField.text)
             textField = alertTextField
         }
             
