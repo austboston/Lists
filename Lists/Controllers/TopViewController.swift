@@ -12,33 +12,22 @@ class TopViewController: UITableViewController {
     
     @IBOutlet var topTableView: UITableView!
     
-    let defaults = UserDefaults.standard
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    
     
     var itemArray = [Item]()
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        let newItem = Item()
-        newItem.title = "Catch the Joker"
-        itemArray.append(newItem)
+        print(dataFilePath!)
         
-        let newItem2 = Item()
-        newItem2.title = "Hire Mike 2"
-        itemArray.append(newItem2)
-        
-        let newItem3 = Item()
-        newItem3.title = "Hire Mike 3"
-        itemArray.append(newItem3)
-        
-        let newItem4 = Item()
-        newItem4.title = "Hire Mike 4"
-        itemArray.append(newItem4)
+        self.loadItems()
         
         
-        if let items = defaults.array(forKey: "TopViewArray") as? [Item] {
-            itemArray = items
-        }
+//                if let items = defaults.array(forKey: "TopViewArray") as? [Item] {
+//                    itemArray = items
+//                }
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -52,30 +41,30 @@ class TopViewController: UITableViewController {
         cell.accessoryType = itemA.done ? .checkmark : .none
         
         return cell
-
+        
     }
     
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return itemArray.count
     }
-
+    
     func configureTableView() {
         topTableView.rowHeight = UITableView.automaticDimension
         topTableView.estimatedRowHeight = 120.0
     }
     
-
+    
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
-        tableView.reloadData()
+        self.saveItems()
         
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
-
+    
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         var textField = UITextField()
         
@@ -85,18 +74,42 @@ class TopViewController: UITableViewController {
             let newItem = Item()
             newItem.title = textField.text!
             self.itemArray.append(newItem)
-            self.defaults.set(self.itemArray, forKey: "TopViewArray")
-            self.tableView.reloadData()
-        }
-        
-        
-        alert.addAction(action)
-        alert.addTextField { (alertTextField) in
-            alertTextField.placeholder = "Create new item"
-            textField = alertTextField
-        }
             
+            alert.addAction(action)
+            alert.addTextField { (alertTextField) in
+                alertTextField.placeholder = "Create new item"
+                textField = alertTextField
+            }
+        }
         present(alert, animated: true, completion: nil)
+//        self.saveItems()
+        }
+    
+        func saveItems() {
+            let encoder = PropertyListEncoder()
+            do {
+                let data = try encoder.encode(itemArray)
+                try data.write(to: dataFilePath!)
+            } catch {
+                print("error encoding item array, \(error)")
+            }
+            self.tableView.reloadData()
+            
+        }
+    
+    func loadItems() {
+        if let data = try? Data(contentsOf: dataFilePath!) {
+            let decoder = PropertyListDecoder()
+            do {
+               itemArray = try decoder.decode([Item].self, from: data)
+            } catch {
+                print("error decoding item array, \(error)")
+            }
+            
+        }
+        self.tableView.reloadData()
     }
+        
+    
 }
 
