@@ -7,43 +7,39 @@
 //
 
 import UIKit
+import CoreData
 
 class TopViewController: UITableViewController {
     
     @IBOutlet var topTableView: UITableView!
     
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
-    
-    
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     var itemArray = [Item]()
+    var selectedCategory : Categoryy? {
+        didSet{
+            loadItems()
+        }
+    }
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        print(dataFilePath!)
-        
-        self.loadItems()
-        
-        
-//                if let items = defaults.array(forKey: "TopViewArray") as? [Item] {
-//                    itemArray = items
-//                }
+        print(dataFilePath)
     }
     
+    
+    //MARK: - TABLEVIEW DATASOURCE METHODS
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "TopViewItemCell", for: indexPath)
+        let newItem = itemArray[indexPath.row]
         
-        let itemA = itemArray[indexPath.row]
-        
-        cell.textLabel?.text = itemA.title
-        
+        cell.textLabel?.text = newItem.title
         //TERNARY OPERATOR IS ==> value = condition ? valueIfTrue : valueIfFalse
-        cell.accessoryType = itemA.done ? .checkmark : .none
+        cell.accessoryType = newItem.done ? .checkmark : .none
         
         return cell
-        
     }
-    
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return itemArray.count
@@ -55,11 +51,16 @@ class TopViewController: UITableViewController {
     }
     
     
+    //MARK: - TABLEVIEW DELEGATE METHODS
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+//        context.delete(itemArray[indexPath.row])
+//        itemArray.remove(at: indexPath.row)
+//        saveItems()
         
-        self.saveItems()
+        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+
+        saveItems()
         
         tableView.deselectRow(at: indexPath, animated: true)
     }
@@ -67,49 +68,87 @@ class TopViewController: UITableViewController {
     
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         var textField = UITextField()
-        
         let alert = UIAlertController(title: "Add New Item", message: "", preferredStyle: .alert)
         
         let action = UIAlertAction(title: "Add", style: .default) { (action) in
-            let newItem = Item()
+            let newItem = Item(context: self.context)
             newItem.title = textField.text!
+            newItem.done = false
+            newItem.parentCategory = self.selectedCategory
             self.itemArray.append(newItem)
-            
-            alert.addAction(action)
-            alert.addTextField { (alertTextField) in
+            self.saveItems()
+        }
+        
+        alert.addTextField { (alertTextField) in
                 alertTextField.placeholder = "Create new item"
                 textField = alertTextField
             }
-        }
+        alert.addAction(action)
         present(alert, animated: true, completion: nil)
-//        self.saveItems()
         }
     
-        func saveItems() {
-            let encoder = PropertyListEncoder()
+    //MARK: - DATA MANIPULATION METHODS
+    
+    func saveItems() {
+            
             do {
-                let data = try encoder.encode(itemArray)
-                try data.write(to: dataFilePath!)
+                try context.save()
             } catch {
-                print("error encoding item array, \(error)")
+                print("error saving context, \(error)")
             }
             self.tableView.reloadData()
             
         }
     
-    func loadItems() {
-        if let data = try? Data(contentsOf: dataFilePath!) {
-            let decoder = PropertyListDecoder()
-            do {
-               itemArray = try decoder.decode([Item].self, from: data)
-            } catch {
-                print("error decoding item array, \(error)")
-            }
-            
-        }
-        self.tableView.reloadData()
-    }
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
+        let predicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
         
+        request.predicate = predicate
+        
+        do{
+            itemArray = try context.fetch(request)
+        }catch{
+            print("error fetching! \(error)")
+    }
+        tableView.reloadData()
+    }
+    
     
 }
 
+
+//MARK: - SEARCH BAR METHODS
+extension TopViewController: UISearchBarDelegate {
+    
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        
+        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@ && parentCategory.name MATCHES %@", [searchBar.text!, selectedCategory!.name!])
+        
+        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        
+        loadItems(with: request)
+        
+        searchBar.resignFirstResponder()
+
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            DispatchQueue.main.async {
+                self.loadItems()
+                searchBar.resignFirstResponder()
+            }
+        } else {
+            let request : NSFetchRequest<Item> = Item.fetchRequest()
+            
+            request.predicate = NSPredicate(format: "title CONTAINS[cd] %@ && parentCategory.name MATCHES %@", [searchBar.text!, selectedCategory!.name!])
+            
+            request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+            
+            loadItems(with: request)
+
+        }
+    }
+}
