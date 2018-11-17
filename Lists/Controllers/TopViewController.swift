@@ -7,16 +7,15 @@
 //
 
 import UIKit
-import CoreData
+import RealmSwift
 
 class TopViewController: UITableViewController {
     
     @IBOutlet var topTableView: UITableView!
     
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-    var itemArray = [Item]()
-    var selectedCategory : Categoryy? {
+    var todoItems: Results<Item>?
+    let realm = try! Realm()
+    var selectedCategory : Category? {
         didSet{
             loadItems()
         }
@@ -25,24 +24,25 @@ class TopViewController: UITableViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        print(dataFilePath)
+        
     }
     
     
     //MARK: - TABLEVIEW DATASOURCE METHODS
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "TopViewItemCell", for: indexPath)
-        let newItem = itemArray[indexPath.row]
-        
-        cell.textLabel?.text = newItem.title
-        //TERNARY OPERATOR IS ==> value = condition ? valueIfTrue : valueIfFalse
-        cell.accessoryType = newItem.done ? .checkmark : .none
-        
+        if let newItem = todoItems?[indexPath.row] {
+            cell.textLabel?.text = newItem.title
+            //TERNARY OPERATOR IS ==> value = condition ? valueIfTrue : valueIfFalse
+            cell.accessoryType = newItem.done ? .checkmark : .none
+        } else {
+            cell.textLabel?.text = "No items in this list:)"
+        }
         return cell
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return itemArray.count
+        return todoItems?.count ?? 1
     }
     
     func configureTableView() {
@@ -54,13 +54,17 @@ class TopViewController: UITableViewController {
     //MARK: - TABLEVIEW DELEGATE METHODS
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
-//        context.delete(itemArray[indexPath.row])
-//        itemArray.remove(at: indexPath.row)
-//        saveItems()
         
-        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
-
-        saveItems()
+        if let item = todoItems?[indexPath.row] {
+            do {
+                try realm.write{
+                    item.done = !item.done
+            }
+            }catch{
+                print("error saving done status, \(error)")
+            }
+            tableView.reloadData()
+        }
         
         tableView.deselectRow(at: indexPath, animated: true)
     }
@@ -71,12 +75,20 @@ class TopViewController: UITableViewController {
         let alert = UIAlertController(title: "Add New Item", message: "", preferredStyle: .alert)
         
         let action = UIAlertAction(title: "Add", style: .default) { (action) in
-            let newItem = Item(context: self.context)
-            newItem.title = textField.text!
-            newItem.done = false
-            newItem.parentCategory = self.selectedCategory
-            self.itemArray.append(newItem)
-            self.saveItems()
+            
+            if let currentCategory = self.selectedCategory {
+            do {
+                try self.realm.write {
+                    let newItem = Item()
+                    newItem.title = textField.text!
+                    newItem.dateAdded = Date()
+                    currentCategory.items.append(newItem)
+                }
+            } catch {
+                print("error saving item to Realm, \(error)")
+            }
+            self.tableView.reloadData()
+            }
         }
         
         alert.addTextField { (alertTextField) in
@@ -89,66 +101,42 @@ class TopViewController: UITableViewController {
     
     //MARK: - DATA MANIPULATION METHODS
     
-    func saveItems() {
-            
-            do {
-                try context.save()
-            } catch {
-                print("error saving context, \(error)")
-            }
-            self.tableView.reloadData()
-            
-        }
+    func loadItems() {
+
+    todoItems = selectedCategory?.items.sorted(byKeyPath: "dateAdded", ascending: true)
     
-    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
-        let predicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
-        
-        request.predicate = predicate
-        
-        do{
-            itemArray = try context.fetch(request)
-        }catch{
-            print("error fetching! \(error)")
-    }
-        tableView.reloadData()
+    tableView.reloadData()
     }
     
     
 }
 
 
-//MARK: - SEARCH BAR METHODS
+// MARK: - SEARCH BAR METHODS
+
+
 extension TopViewController: UISearchBarDelegate {
-    
-    
+
+
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        let request : NSFetchRequest<Item> = Item.fetchRequest()
         
-        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@ && parentCategory.name MATCHES %@", [searchBar.text!, selectedCategory!.name!])
-        
-        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
-        
-        loadItems(with: request)
+        todoItems = todoItems?.filter("title CONTAINS [cd] %@", searchBar.text!).sorted(byKeyPath: "dateAdded", ascending: true)
+        self.tableView.reloadData()
         
         searchBar.resignFirstResponder()
 
     }
-    
+
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         if searchBar.text?.count == 0 {
             DispatchQueue.main.async {
                 self.loadItems()
-                searchBar.resignFirstResponder()
+//                searchBar.resignFirstResponder()
             }
-        } else {
-            let request : NSFetchRequest<Item> = Item.fetchRequest()
-            
-            request.predicate = NSPredicate(format: "title CONTAINS[cd] %@ && parentCategory.name MATCHES %@", [searchBar.text!, selectedCategory!.name!])
-            
-            request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
-            
-            loadItems(with: request)
-
+        }else {
+            todoItems = todoItems?.filter("title CONTAINS [cd] %@", searchBar.text!).sorted(byKeyPath: "dateAdded", ascending: true)
+            self.tableView.reloadData()
         }
     }
 }
+
